@@ -124,7 +124,7 @@ ERR_QUIT:
   * Others:       add by zlk
   ******************************************************************************
   */ 
-static int unmsg_accept(int nfd)
+static int unmsg_accept(const int nfd)
 {
     int ret = 0;
     int fd;
@@ -150,34 +150,27 @@ again:
     return 0;
 }
 
-int OpenServiceSocket(char *serviceAddr, int servicePort)
+int OpenServiceSocket(const char *fileName)
 {
     int ret = 0;
     int recvlen = 0;
     int flag = 1, len = sizeof(int);
     int socketfd = -1;
-    struct sockaddr_in servaddr;
+    struct sockaddr_un servaddr;
     fd_set fdset;
 	
-	socketfd = socket(AF_INET, SOCK_STREAM, 0);
+	socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (-1 == socketfd) {
         printf("Creat socket error; %s(errno: %d)\n",strerror(errno),errno);
         return -1;
     }
 
+    unlink(fileName);
     memset(&servaddr, 0, sizeof(struct sockaddr_in));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(serviceAddr);
-//    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(servicePort);
+    servaddr.sun_family = AF_UNIX;
+    memcpy(servaddr.sun_path, fileName, sizeof(fileName));
     
-    ret = setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &flag, len);
-    if (-1 == ret) {
-        printf("setsockopt() error; %s(errno: %d)\n",strerror(errno),errno);
-        return -1;
-    }
-
-    ret = bind(socketfd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr_in));
+    ret = bind(socketfd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr_un));
     if (-1 == ret) {
         printf("bind() error; %s(errno: %d)\n",strerror(errno),errno);
         return -1;
@@ -210,10 +203,11 @@ int OpenServiceSocket(char *serviceAddr, int servicePort)
     
 
     close(socketfd);
+    unlink(fileName);
     return 0;
 }
 
 int main()
 {
-    OpenServiceSocket("127.0.0.1", 6666);
+    OpenServiceSocket("/work/git/domain");
 }

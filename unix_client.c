@@ -25,29 +25,29 @@
   * Others:       add by zlk
   ******************************************************************************
   */ 
-int OpenClientSocket(char *serviceAddr, const int servicePort, void *buffer, unsigned int bufLen, unsigned int timeout)
+int OpenClientSocket(const char *fileName, void *buffer, unsigned int bufLen, unsigned int timeout)
 {
     char *buf = (char *)buffer;
     
     int ret = 0;
     int len = 0;
     int socketfd = -1;
-    struct sockaddr_in servaddr;
+    struct sockaddr_un servaddr;
     fd_set fdset;
 	struct timeval tv;
 
-    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (-1 == socketfd) {
         printf("Creat socket error; %s(errno: %d)\n",strerror(errno),errno);
         goto EXIT;
     }
 
-    memset(&servaddr, 0, sizeof(struct sockaddr_in));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(serviceAddr);
-    servaddr.sin_port = htons(servicePort);
+    unlink(fileName);
+    memset(&servaddr, 0, sizeof(struct sockaddr_un));
+    servaddr.sun_family = AF_UNIX;
+    memcpy(servaddr.sun_path, fileName, sizeof(fileName));
 
-    ret = connect(socketfd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr_in));
+    ret = connect(socketfd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr_un));
     if (ret < 0) {
         printf("connect() error; %s(errno: %d)\n",strerror(errno),errno);
         goto EXIT;
@@ -99,12 +99,14 @@ again:
 	}
     printf("buf = %s\n", buf);
 	close(socketfd);
+    unlink(fileName);
 	return (len > 0 ? 0 : -1);
 
 EXIT:
     if (socketfd > 0) {
         close(socketfd);
     }
+    unlink(fileName);
     return -1;
 }
 
@@ -113,7 +115,7 @@ int main()
     char buf[] = "adfff";
     int len = sizeof(buf);
 
-    OpenClientSocket("127.0.0.1", 6666, buf, len, 1000);
+    OpenClientSocket("/work/git/domain", buf, len, 1000);
 
     printf("buf = %s\n", buf);
 
